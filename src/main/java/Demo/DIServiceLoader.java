@@ -3,12 +3,12 @@ package Demo;
 import test.TestInterface;
 
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 public class DIServiceLoader {
 
-    private HashMap<String, TestInterface> hash = new HashMap();
+    private HashMap<String, TestInterface> hash = new HashMap<String, TestInterface>();
+    private ServiceLoader<TestInterface> serviceLoader = ServiceLoader.load(TestInterface.class);
 
     public TestInterface findByClass(Class<?> beanClass) {
         ServiceLoader<TestInterface> serviceLoader = ServiceLoader.load(TestInterface.class);
@@ -20,54 +20,50 @@ public class DIServiceLoader {
         return null;
     }
 
-    public TestInterface findByName(String beanName) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        ArrayList<String> something = readFromFile();
-        String className = "";
-        label:
-        for (String s : something) {
-            String bufferClassName = "";
-            for (int j = 0; j < s.length(); j++) {
-                String buffBeanName = "";
-                if (s.charAt(j) == '#') {
-                    j++;
-                    while (j < s.length()) {
-                        buffBeanName += s.charAt(j);
-                        j++;
-                    }
-                    if (buffBeanName.equals(beanName)) {
-                        className = bufferClassName;
-                        break label;
-                    }
-                } else {
-                    if (s.charAt(j) != ' ') {
-                        bufferClassName += s.charAt(j);
-                    }
-                }
-            }
-        }
-        Class<?> object = Class.forName(className);
-        return (TestInterface) object.getDeclaredConstructor().newInstance();
+    public TestInterface findByName(String beanName) {
+        return hash.get(beanName);
     }
 
     public Iterator<Map<String, TestInterface>> iterator() {
-        return null;
+        return (Iterator) hash.entrySet().iterator();
     }
 
-    public ArrayList<String> readFromFile() {
-        ArrayList<String> arrayList = new ArrayList<>();
+    public void load() {
         try {
             File file = new File(Objects.requireNonNull(DIServiceLoader.class.getResource("/META-INF/services/test.TestInterface")).getFile());
             FileReader fr = new FileReader(file);
             BufferedReader reader = new BufferedReader(fr);
             String line = reader.readLine();
             while (line != null) {
-                arrayList.add(line);
+                StringBuilder bufferClassName = new StringBuilder();
+                StringBuilder buffBeanName = new StringBuilder();
+                for (int j = 0; j < line.length(); j++) {
+
+                    if (line.charAt(j) == '#') {
+                        j++;
+                        while (j < line.length()) {
+                            buffBeanName.append(line.charAt(j));
+                            j++;
+                        }
+                        TestInterface testInterface = null;
+                        for (TestInterface t : serviceLoader) {
+                            if (t.getClass().getName().equals(bufferClassName.toString())) {
+                                testInterface = t;
+                                break;
+                            }
+                        }
+                        hash.put(buffBeanName.toString(), testInterface);
+                    } else {
+                        if (line.charAt(j) != ' ') {
+                            bufferClassName.append(line.charAt(j));
+                        }
+                    }
+                }
                 line = reader.readLine();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return arrayList;
     }
 
 }
